@@ -1,12 +1,13 @@
 import React, {useContext} from 'react';
 import {NavigationContainer} from '@react-navigation/native';
+import {View, ActivityIndicator} from 'react-native';
 import {AuthContext} from '../context/AuthContext';
-import AppNavigator from './AppNavigator';
 import AuthNavigator from './AuthNavigator';
-import {ActivityIndicator, View} from 'react-native';
+import AppNavigator from './AppNavigator';
+import DrawerNavigator from './DrawerNavigator';
 
 const Navigation = () => {
-  const {isAuthenticated, isLoading} = useContext(AuthContext);
+  const {isAuthenticated, isLoading, user} = useContext(AuthContext);
 
   if (isLoading) {
     return (
@@ -18,7 +19,13 @@ const Navigation = () => {
 
   return (
     <NavigationContainer>
-      {isAuthenticated ? <AppNavigator /> : <AuthNavigator />}
+      {!isAuthenticated ? (
+        <AuthNavigator />
+      ) : user?.rol?.nombre === 'ADMIN' ? (
+        <DrawerNavigator />
+      ) : (
+        <AppNavigator />
+      )}
     </NavigationContainer>
   );
 };

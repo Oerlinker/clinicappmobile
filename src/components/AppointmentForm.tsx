@@ -1,12 +1,11 @@
 import React, {useState, useEffect, useContext} from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
   ScrollView,
-  TouchableOpacity,
+  StyleSheet,
+  View,
   Alert,
   ActivityIndicator,
+  Text,
 } from 'react-native';
 import {Picker} from '@react-native-picker/picker';
 import DateTimePicker, {
@@ -18,116 +17,185 @@ import {AuthContext} from '../context/AuthContext';
 import api from '../api';
 
 interface AppointmentFormProps {
-  onSuccess: () => void;
+  onSuccess: (newCita: {id: number; precio: number}) => void;
   onCancel: () => void;
 }
 
 interface Doctor {
   id: number;
-  usuario: {
-    nombre: string;
-    apellido: string;
-  };
+  usuario: {nombre: string; apellido: string};
 }
 
-const AppointmentForm = ({onSuccess, onCancel}: AppointmentFormProps) => {
+interface Disponibilidad {
+  fecha: string;
+  horaInicio: string;
+  horaFin: string;
+  duracionSlot: number;
+  cupos: number;
+}
+
+interface CitaData {
+  id: number;
+  fecha: string;
+  hora: string;
+  estado: string;
+  precio: number;
+}
+
+export default function AppointmentForm({
+  onSuccess,
+  onCancel,
+}: AppointmentFormProps) {
   const {user} = useContext(AuthContext);
-  const [loading, setLoading] = useState(false);
+
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loadingDoctors, setLoadingDoctors] = useState(true);
 
-  // Datos para selección
-  const [doctors, setDoctors] = useState<Doctor[]>([]);
-  const [appointmentTypes] = useState([
-    {id: 'Rutina', nombre: 'Rutina'},
-    {id: 'Control', nombre: 'Control'},
-    {id: 'Pediátrica', nombre: 'Pediátrica'},
-    {id: 'Pre-quirúrgica', nombre: 'Pre-quirúrgica'},
-    {id: 'Post-quirúrgica', nombre: 'Post-quirúrgica'},
-  ]);
-
-  // Valores del formulario
-  const [selectedDoctor, setSelectedDoctor] = useState<string | number>('');
-  const [selectedType, setSelectedType] = useState('');
+  const [selectedDoctor, setSelectedDoctor] = useState<number | ''>('');
+  const [selectedType, setSelectedType] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [selectedTime, setSelectedTime] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
+
+  const [disp, setDisp] = useState<Disponibilidad | null>(null);
+  const [citasDoc, setCitasDoc] = useState<CitaData[]>([]);
+  const [slots, setSlots] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<string>('');
+
+  const [misCitas, setMisCitas] = useState<CitaData[]>([]);
+
+  const [loading, setLoading] = useState(false);
+
+  const appointmentTypes = [
+    {label: 'Rutina', value: 'RUTINA'},
+    {label: 'Control', value: 'CONTROL'},
+    {label: 'Pediátrica', value: 'PEDIATRICA'},
+    {label: 'Pre-quirúrgica', value: 'PRE_QUIRURGICA'},
+    {label: 'Post-quirúrgica', value: 'POST_QUIRURGICA'},
+  ];
 
   useEffect(() => {
-    fetchDoctors();
+    (async () => {
+      setLoadingDoctors(true);
+      try {
+        const resp = await api.get<Doctor[]>('/empleados/doctores');
+        setDoctors(resp.data);
+      } catch {
+        Alert.alert('Error', 'No se pudieron cargar los doctores');
+      } finally {
+        setLoadingDoctors(false);
+      }
+    })();
   }, []);
 
-  const fetchDoctors = async () => {
-    setLoadingDoctors(true);
-    try {
-      const response = await api.get('/empleados/doctores');
-      setDoctors(response.data);
-    } catch (error) {
-      console.error('Error al cargar doctores:', error);
-      Alert.alert('Error', 'No se pudieron cargar los doctores');
-    } finally {
-      setLoadingDoctors(false);
-    }
-  };
+  useEffect(() => {
+    if (!user) return;
+    api
+      .get<CitaData[]>('/citas/mis-citas')
+      .then(r => setMisCitas(r.data))
+      .catch(() => setMisCitas([]));
+  }, [user]);
 
-  const handleDateChange = (event: DateTimePickerEvent, date?: Date) => {
+  useEffect(() => {
+    if (!selectedDoctor) {
+      setDisp(null);
+      setCitasDoc([]);
+      setSlots([]);
+      return;
+    }
+    const fechaStr = format(selectedDate, 'yyyy-MM-dd');
+    setLoadingSlots(true);
+    Promise.all([
+      api
+        .get<Disponibilidad>(
+          `/disponibilidades/empleado/${selectedDoctor}/fecha/${fechaStr}`,
+        )
+        .then(r => r.data)
+        .catch(() => null),
+      api
+        .get<CitaData[]>(`/citas/doctor/${selectedDoctor}/fecha/${fechaStr}`)
+        .then(r => r.data)
+        .catch(() => []),
+    ]).then(([d, c]) => {
+      setDisp(d);
+      setCitasDoc(c);
+      setLoadingSlots(false);
+      setSelectedSlot('');
+    });
+  }, [selectedDoctor, selectedDate]);
+
+  useEffect(() => {
+    if (!disp) {
+      setSlots([]);
+      return;
+    }
+    const {horaInicio, horaFin, duracionSlot, cupos} = disp;
+    const [h0, m0] = horaInicio.slice(0, 5).split(':').map(Number);
+    const [h1, m1] = horaFin.slice(0, 5).split(':').map(Number);
+    const startMin = h0 * 60 + m0;
+    const endMin = h1 * 60 + m1;
+
+    const allSlots: string[] = [];
+    for (let t = startMin; t + duracionSlot <= endMin; t += duracionSlot) {
+      const hh = String(Math.floor(t / 60)).padStart(2, '0');
+      const mm = String(t % 60).padStart(2, '0');
+      allSlots.push(`${hh}:${mm}`);
+    }
+
+    const booked = citasDoc.map(c => c.hora.split('T')[1].slice(0, 5));
+    const available = allSlots.filter(
+      time => booked.filter(b => b === time).length < cupos,
+    );
+    setSlots(available);
+  }, [disp, citasDoc]);
+
+  const onChangeDate = (_: DateTimePickerEvent, date?: Date) => {
     setShowDatePicker(false);
     if (date) setSelectedDate(date);
   };
 
-  const handleTimeChange = (event: DateTimePickerEvent, time?: Date) => {
-    setShowTimePicker(false);
-    if (time) setSelectedTime(time);
-  };
+  const validate = (): boolean => {
+    const fechaStr = format(selectedDate, 'yyyy-MM-dd');
 
-  const validateForm = () => {
+    if (misCitas.find(c => c.fecha === fechaStr && c.estado !== 'CANCELADA')) {
+      Alert.alert('Aviso', 'Usted ya tiene una cita activa para este día.');
+      return false;
+    }
     if (!selectedDoctor) {
-      Alert.alert('Error', 'Por favor selecciona un médico');
+      Alert.alert('Error', 'Selecciona un médico');
       return false;
     }
-
     if (!selectedType) {
-      Alert.alert('Error', 'Por favor selecciona un tipo de cita');
+      Alert.alert('Error', 'Selecciona tipo de cita');
       return false;
     }
-
-    const currentDate = new Date();
-    currentDate.setHours(0, 0, 0, 0);
-    const selectedDateCopy = new Date(selectedDate);
-    selectedDateCopy.setHours(0, 0, 0, 0);
-
-    if (selectedDateCopy < currentDate) {
-      Alert.alert('Error', 'La fecha de la cita no puede ser en el pasado');
+    if (!selectedSlot) {
+      Alert.alert('Error', 'Selecciona un horario');
       return false;
     }
     return true;
   };
 
   const scheduleAppointment = async () => {
-    if (!validateForm()) return;
-    if (!user) {
-      Alert.alert('Error', 'No se pudo identificar al usuario');
-      return;
-    }
-
+    if (!validate() || !user) return;
     setLoading(true);
-    try {
-      const appointmentData = {
-        fecha: format(selectedDate, 'yyyy-MM-dd'),
-        hora: format(selectedTime, 'HH:mm'),
-        estado: 'AGENDADA',
-        tipo: selectedType,
-        paciente: {id: user.id},
-        doctor: {id: Number(selectedDoctor)},
-      };
 
-      await api.post('/citas', appointmentData);
-      onSuccess();
-    } catch (error) {
-      console.error('Error al agendar cita:', error);
+    const payload = {
+      fecha: format(selectedDate, 'yyyy-MM-dd'),
+      hora: `${selectedSlot}:00`,
+      estado: 'AGENDADA',
+      tipo: selectedType,
+      paciente: {id: user.id},
+      doctor: {id: selectedDoctor},
+    };
+
+    try {
+      const {data: newCita} = await api.post('/citas', payload);
+      onSuccess(newCita);
+    } catch (e: any) {
       Alert.alert(
         'Error',
-        'No se pudo agendar la cita. Por favor, verifica los datos e inténtalo nuevamente.',
+        e.response?.data?.message || 'No se pudo agendar la cita.',
       );
     } finally {
       setLoading(false);
@@ -136,73 +204,39 @@ const AppointmentForm = ({onSuccess, onCancel}: AppointmentFormProps) => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.formGroup}>
+      {/* Fecha */}
+      <View style={styles.field}>
         <Text style={styles.label}>Fecha</Text>
-        <TouchableOpacity
-          style={styles.dateInput}
-          onPress={() => setShowDatePicker(true)}>
-          <Text>{format(selectedDate, 'dd/MM/yyyy', {locale: es})}</Text>
-        </TouchableOpacity>
+        <Text style={styles.input} onPress={() => setShowDatePicker(true)}>
+          {format(selectedDate, 'dd/MM/yyyy', {locale: es})}
+        </Text>
         {showDatePicker && (
           <DateTimePicker
             value={selectedDate}
             mode="date"
-            display="default"
-            onChange={handleDateChange}
             minimumDate={new Date()}
+            onChange={onChangeDate}
           />
         )}
       </View>
 
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Hora</Text>
-        <TouchableOpacity
-          style={styles.dateInput}
-          onPress={() => setShowTimePicker(true)}>
-          <Text>{format(selectedTime, 'HH:mm', {locale: es})}</Text>
-        </TouchableOpacity>
-        {showTimePicker && (
-          <DateTimePicker
-            value={selectedTime}
-            mode="time"
-            is24Hour={true}
-            display="default"
-            onChange={handleTimeChange}
-          />
-        )}
-      </View>
-
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Tipo de Cita</Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={selectedType}
-            style={styles.picker}
-            onValueChange={itemValue => setSelectedType(itemValue)}>
-            <Picker.Item label="Seleccione un tipo" value="" />
-            {appointmentTypes.map(type => (
-              <Picker.Item key={type.id} label={type.nombre} value={type.id} />
-            ))}
-          </Picker>
-        </View>
-      </View>
-
-      <View style={styles.formGroup}>
+      {/* Médico */}
+      <View style={styles.field}>
         <Text style={styles.label}>Médico</Text>
         {loadingDoctors ? (
-          <ActivityIndicator size="small" color="#2196F3" />
+          <ActivityIndicator />
         ) : (
-          <View style={styles.pickerContainer}>
+          <View style={styles.picker}>
             <Picker
               selectedValue={selectedDoctor}
-              style={styles.picker}
-              onValueChange={itemValue => setSelectedDoctor(itemValue)}>
-              <Picker.Item label="Seleccione un médico" value="" />
-              {doctors.map(doctor => (
+              onValueChange={v => setSelectedDoctor(v as number)}
+              style={{color: '#000'}}>
+              <Picker.Item label="Selecciona médico" value="" />
+              {doctors.map(d => (
                 <Picker.Item
-                  key={doctor.id}
-                  label={`${doctor.usuario.nombre} ${doctor.usuario.apellido}`}
-                  value={doctor.id}
+                  key={d.id}
+                  label={`${d.usuario.nombre} ${d.usuario.apellido}`}
+                  value={d.id}
                 />
               ))}
             </Picker>
@@ -210,100 +244,95 @@ const AppointmentForm = ({onSuccess, onCancel}: AppointmentFormProps) => {
         )}
       </View>
 
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.cancelButton}
-          onPress={onCancel}
-          disabled={loading}>
-          <Text style={styles.cancelButtonText}>Cancelar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.submitButton}
-          onPress={scheduleAppointment}
-          disabled={loading}>
-          {loading ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text style={styles.submitButtonText}>Agendar Cita</Text>
-          )}
-        </TouchableOpacity>
+      {/* Tipo */}
+      <View style={styles.field}>
+        <Text style={styles.label}>Tipo de cita</Text>
+        <View style={styles.picker}>
+          <Picker
+            selectedValue={selectedType}
+            onValueChange={v => setSelectedType(v as string)}
+            style={{color: '#000'}}>
+            <Picker.Item label="Selecciona tipo" value="" />
+            {appointmentTypes.map(t => (
+              <Picker.Item key={t.value} label={t.label} value={t.value} />
+            ))}
+          </Picker>
+        </View>
+      </View>
+
+      {/* Horario */}
+      <View style={styles.field}>
+        <Text style={styles.label}>Horario</Text>
+        {loadingSlots ? (
+          <ActivityIndicator />
+        ) : slots.length > 0 ? (
+          <View style={styles.picker}>
+            <Picker
+              selectedValue={selectedSlot}
+              onValueChange={v => setSelectedSlot(v as string)}
+              style={{color: '#000'}}>
+              <Picker.Item label="Selecciona horario" value="" />
+              {slots.map(s => (
+                <Picker.Item key={s} label={s} value={s} />
+              ))}
+            </Picker>
+          </View>
+        ) : (
+          <Text style={{color: '#555'}}>
+            {selectedDoctor
+              ? 'No hay turnos disponibles en esta fecha'
+              : 'Selecciona doctor y fecha'}
+          </Text>
+        )}
+      </View>
+
+      {/* Botones */}
+      <View style={styles.buttons}>
+        <Text style={styles.cancel} onPress={onCancel}>
+          Cancelar
+        </Text>
+        <View style={styles.spacer} />
+        {loading ? (
+          <ActivityIndicator />
+        ) : (
+          <Text style={styles.submit} onPress={scheduleAppointment}>
+            Agendar Cita
+          </Text>
+        )}
       </View>
     </ScrollView>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    backgroundColor: '#fff',
-  },
-  formGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 16,
-    marginBottom: 8,
-    fontWeight: '500',
-    color: '#333',
-  },
-  pickerContainer: {
+  container: {padding: 16, backgroundColor: '#fff'},
+  field: {marginBottom: 16},
+  label: {fontWeight: '600', marginBottom: 4},
+  input: {
+    padding: 12,
     borderWidth: 1,
-    borderColor: '#ccc',
     borderRadius: 4,
     backgroundColor: '#f9f9f9',
   },
   picker: {
-    height: 50,
-    color: '#333',
-  },
-  dateInput: {
     borderWidth: 1,
-    borderColor: '#ccc',
     borderRadius: 4,
-    padding: 12,
     backgroundColor: '#f9f9f9',
   },
-  textArea: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 4,
-    padding: 10,
-    textAlignVertical: 'top',
-    minHeight: 100,
-    backgroundColor: '#f9f9f9',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 20,
-  },
-  cancelButton: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    padding: 12,
-    borderRadius: 4,
-    flex: 1,
-    marginRight: 8,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
+  buttons: {flexDirection: 'row', justifyContent: 'flex-end', marginTop: 24},
+  cancel: {
     color: '#666',
-    fontWeight: 'bold',
-    fontSize: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#ccc',
   },
-  submitButton: {
-    backgroundColor: '#2196F3',
+  spacer: {width: 16},
+  submit: {
+    color: '#fff',
+    backgroundColor: '#0055A4',
     padding: 12,
     borderRadius: 4,
-    flex: 1,
-    marginLeft: 8,
-    alignItems: 'center',
-  },
-  submitButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
   },
 });
-
-export default AppointmentForm;

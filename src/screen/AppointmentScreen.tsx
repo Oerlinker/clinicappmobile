@@ -1,58 +1,34 @@
-import React, {useState, useContext, useEffect, useCallback} from 'react';
+// src/screens/AppointmentScreen.tsx
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import {
   View,
   Text,
   FlatList,
   StyleSheet,
-  TouchableOpacity,
   ActivityIndicator,
   Alert,
   Modal,
+  Linking,
+  TouchableOpacity,
 } from 'react-native';
-import {AuthContext} from '../context/AuthContext';
+import { AuthContext } from '../context/AuthContext';
 import api from '../api';
-import {format} from 'date-fns';
-import {es} from 'date-fns/locale';
 import AppointmentForm from '../components/AppointmentForm';
 
-interface Doctor {
-  id: number;
-  usuario: {
-    nombre: string;
-    apellido: string;
-  };
-}
-
-interface Appointment {
-  id: number;
-  fecha: string;
-  hora: string;
-  estado: string;
-  tipo: string;
-  paciente: {
-    id: number;
-  };
-  doctor: Doctor;
-}
-
-const AppointmentScreen = () => {
-  const {user} = useContext(AuthContext);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+export default function AppointmentScreen() {
+  const { user } = useContext(AuthContext);
+  const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
 
+  // 1) Función para cargar tus citas
   const fetchAppointments = useCallback(async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
+    if (!user) return;
     setLoading(true);
     try {
-      const response = await api.get(`/citas/usuario/${user.id}`);
-      setAppointments(response.data);
-    } catch (error) {
-      console.error('Error al cargar citas:', error);
+      const resp = await api.get('/citas/mis-citas');
+      setAppointments(resp.data);
+    } catch {
       Alert.alert('Error', 'No se pudieron cargar tus citas');
     } finally {
       setLoading(false);
@@ -63,234 +39,135 @@ const AppointmentScreen = () => {
     fetchAppointments();
   }, [fetchAppointments]);
 
-  const handleCreateSuccess = () => {
+  // 2) Al crear una nueva cita: cierra modal, recarga y abre Stripe
+  const handleCreateSuccess = async (newCita:{id:number;precio:number}) => {
     setModalVisible(false);
-    fetchAppointments();
-    Alert.alert('Éxito', 'Cita agendada correctamente');
-  };
-
-  const getStatusColor = (estado: string) => {
-    switch (estado?.toLowerCase()) {
-      case 'agendada':
-        return '#4CAF50'; // Verde
-      case 'completada':
-        return '#2196F3'; // Azul
-      case 'cancelada':
-        return '#F44336'; // Rojo
-      default:
-        return '#9E9E9E'; // Gris
+    await fetchAppointments();
+    try {
+      const { data } = await api.post('/payments/create-checkout-session', {
+        citaId: newCita.id,
+        pacienteId: user!.id,
+        amount: newCita.precio,
+        currency: 'USD',
+      });
+      Linking.openURL(data.url);
+    } catch {
+      Alert.alert('Error', 'No se pudo iniciar el pago');
     }
   };
 
-  const renderAppointmentItem = ({item}: {item: Appointment}) => (
-    <View style={styles.appointmentCard}>
-      <View style={styles.appointmentHeader}>
-        <Text style={styles.dateText}>
-          {format(new Date(item.fecha), 'dd MMM yyyy', {locale: es})}
-        </Text>
-        <Text style={styles.timeText}>{item.hora}</Text>
-      </View>
+  // 3) Función para cancelar una cita
+  const handleCancel = (citaId: number) => {
+    Alert.alert(
+      'Confirmar cancelación',
+      '¿Estás seguro de que deseas cancelar esta cita?',
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Sí, cancelar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.patch(`/citas/${citaId}/cancelar`);
+              Alert.alert('Cita cancelada', 'Tu cita ha sido cancelada exitosamente.');
+              fetchAppointments();
+            } catch {
+              Alert.alert('Error', 'No se pudo cancelar la cita.');
+            }
+          }
+        }
+      ]
+    );
+  };
 
-      <Text style={styles.doctorName}>
+  // 4) Render de cada tarjeta
+  const renderItem = ({ item }: { item:any }) => (
+    <View style={styles.card}>
+      <Text style={styles.line}>
+        <Text style={styles.bold}>{item.fecha}</Text> – {item.hora.split('T')[1].slice(0,5)}
+      </Text>
+      <Text style={styles.line}>{item.tipo}</Text>
+      <Text style={styles.line}>
         Dr. {item.doctor.usuario.nombre} {item.doctor.usuario.apellido}
       </Text>
-
-      <Text style={styles.appointmentType}>Tipo: {item.tipo}</Text>
-
-      <View
+      <Text style={styles.line}>Precio: ${item.precio}</Text>
+      <Text
         style={[
-          styles.statusBadge,
-          {backgroundColor: getStatusColor(item.estado)},
-        ]}>
-        <Text style={styles.statusText}>{item.estado}</Text>
-      </View>
+          styles.line,
+          { color:
+              item.estado === 'AGENDADA'  ? 'orange' :
+                item.estado === 'REALIZADA' ? 'green'  :
+                  'red'
+          }
+        ]}
+      >
+        {item.estado}
+      </Text>
+
+      {/* Botón Cancelar sólo si está AGENDADA */}
+      {item.estado === 'AGENDADA' && (
+        <TouchableOpacity
+          style={styles.cancelButton}
+          onPress={() => handleCancel(item.id)}
+        >
+          <Text style={styles.cancelText}>Cancelar</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Mis Citas</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => setModalVisible(true)}>
-          <Text style={styles.addButtonText}>+ Nueva Cita</Text>
-        </TouchableOpacity>
-      </View>
+      {loading ? (
+        <ActivityIndicator style={styles.centered} size="large" />
+      ) : (
+        <FlatList
+          data={appointments}
+          keyExtractor={i => i.id.toString()}
+          renderItem={renderItem}
+          contentContainerStyle={{ padding: 16 }}
+        />
+      )}
 
-      <View style={styles.listContainer}>
-        {loading ? (
-          <View style={styles.centered}>
-            <ActivityIndicator size="large" color="#2196F3" />
-          </View>
-        ) : appointments.length > 0 ? (
-          <FlatList
-            data={appointments}
-            renderItem={renderAppointmentItem}
-            keyExtractor={item => item.id.toString()}
-            contentContainerStyle={{padding: 8}}
-          />
-        ) : (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
-              No tienes citas agendadas. ¿Quieres agendar una cita ahora?
-            </Text>
-            <TouchableOpacity
-              style={styles.emptyButton}
-              onPress={() => setModalVisible(true)}>
-              <Text style={styles.emptyButtonText}>Agendar Cita</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
+      <Text style={styles.new} onPress={() => setModalVisible(true)}>
+        + Nueva Cita
+      </Text>
 
-      <Modal
-        animationType="slide"
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Agendar Nueva Cita</Text>
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Text style={styles.closeButton}>✕</Text>
-            </TouchableOpacity>
-          </View>
-          <AppointmentForm
-            onSuccess={handleCreateSuccess}
-            onCancel={() => setModalVisible(false)}
-          />
-        </View>
+      <Modal visible={modalVisible} animationType="slide">
+        <AppointmentForm
+          onSuccess={handleCreateSuccess}
+          onCancel={() => setModalVisible(false)}
+        />
       </Modal>
     </View>
   );
-};
+}
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
+  container:    { flex: 1, backgroundColor: '#F5F7FA' },
+  centered:     { flex:1, justifyContent:'center', alignItems:'center' },
+  card:         { padding:12, backgroundColor:'#fff', marginBottom:12, borderRadius:8 },
+  line:         { marginBottom: 4 },
+  bold:         { fontWeight: '600' },
+  new:          {
+    position:'absolute',
+    bottom:16, right:16,
+    backgroundColor:'#0055A4',
+    color:'#fff',
+    padding:12,
+    borderRadius:24,
+    fontWeight:'bold'
   },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: 'white',
-    elevation: 2,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  addButton: {
-    backgroundColor: '#2196F3',
+  cancelButton: {
+    marginTop: 8,
+    alignSelf: 'flex-end',
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 6,
+    backgroundColor: '#F44336',
     borderRadius: 4,
   },
-  addButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  listContainer: {
-    padding: 16,
-  },
-  appointmentCard: {
-    backgroundColor: 'white',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 12,
-    elevation: 1,
-  },
-  appointmentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  dateText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  timeText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  doctorName: {
-    fontSize: 14,
-    color: '#555',
-    marginBottom: 4,
-  },
-  appointmentType: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-  },
-  reason: {
-    fontSize: 13,
-    color: '#777',
-    marginBottom: 8,
-    fontStyle: 'italic',
-  },
-  statusBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  statusText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  emptyButton: {
-    backgroundColor: '#2196F3',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 4,
-  },
-  emptyButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#2196F3',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: 'white',
-  },
-  closeButton: {
-    fontSize: 22,
-    color: 'white',
-    fontWeight: 'bold',
+  cancelText: {
+    color: '#fff',
+    fontWeight: '600',
   },
 });
-
-export default AppointmentScreen;
