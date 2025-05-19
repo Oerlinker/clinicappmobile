@@ -5,6 +5,7 @@ import {AuthContext} from '../context/AuthContext';
 import AuthNavigator from './AuthNavigator';
 import AppNavigator from './AppNavigator';
 import DrawerNavigator from './DrawerNavigator';
+import EnfermeraDrawerNavigator from './EnfermeraDrawerNavigator.tsx';
 
 const Navigation = () => {
   const {isAuthenticated, isLoading, user} = useContext(AuthContext);
@@ -23,6 +24,10 @@ const Navigation = () => {
         <AuthNavigator />
       ) : user?.rol?.nombre === 'ADMIN' ? (
         <DrawerNavigator />
+      ) : user?.rol?.nombre === 'ENFERMERA' ? (
+        <EnfermeraDrawerNavigator />
+      ) : user?.rol?.nombre === 'PACIENTE' ? (
+        <AppNavigator />
       ) : (
         <AppNavigator />
       )}

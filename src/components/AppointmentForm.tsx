@@ -26,6 +26,13 @@ interface Doctor {
   usuario: {nombre: string; apellido: string};
 }
 
+interface Servicio {
+  id: number;
+  nombre: string;
+  descripcion: string;
+  precio: number;
+}
+
 interface Disponibilidad {
   fecha: string;
   horaInicio: string;
@@ -49,10 +56,12 @@ export default function AppointmentForm({
   const {user} = useContext(AuthContext);
 
   const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [servicios, setServicios] = useState<Servicio[]>([]);
   const [loadingDoctors, setLoadingDoctors] = useState(true);
+  const [loadingServicios, setLoadingServicios] = useState(true);
 
   const [selectedDoctor, setSelectedDoctor] = useState<number | ''>('');
-  const [selectedType, setSelectedType] = useState<string>('');
+  const [selectedServicio, setSelectedServicio] = useState<number | ''>('');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -66,15 +75,8 @@ export default function AppointmentForm({
 
   const [loading, setLoading] = useState(false);
 
-  const appointmentTypes = [
-    {label: 'Rutina', value: 'RUTINA'},
-    {label: 'Control', value: 'CONTROL'},
-    {label: 'Pediátrica', value: 'PEDIATRICA'},
-    {label: 'Pre-quirúrgica', value: 'PRE_QUIRURGICA'},
-    {label: 'Post-quirúrgica', value: 'POST_QUIRURGICA'},
-  ];
-
   useEffect(() => {
+    // Cargar doctores
     (async () => {
       setLoadingDoctors(true);
       try {
@@ -84,6 +86,19 @@ export default function AppointmentForm({
         Alert.alert('Error', 'No se pudieron cargar los doctores');
       } finally {
         setLoadingDoctors(false);
+      }
+    })();
+
+    // Cargar servicios
+    (async () => {
+      setLoadingServicios(true);
+      try {
+        const resp = await api.get<Servicio[]>('/servicios');
+        setServicios(resp.data);
+      } catch {
+        Alert.alert('Error', 'No se pudieron cargar los servicios');
+      } finally {
+        setLoadingServicios(false);
       }
     })();
   }, []);
@@ -165,8 +180,8 @@ export default function AppointmentForm({
       Alert.alert('Error', 'Selecciona un médico');
       return false;
     }
-    if (!selectedType) {
-      Alert.alert('Error', 'Selecciona tipo de cita');
+    if (!selectedServicio) {
+      Alert.alert('Error', 'Selecciona un servicio');
       return false;
     }
     if (!selectedSlot) {
@@ -184,7 +199,7 @@ export default function AppointmentForm({
       fecha: format(selectedDate, 'yyyy-MM-dd'),
       hora: `${selectedSlot}:00`,
       estado: 'AGENDADA',
-      tipo: selectedType,
+      servicio: {id: selectedServicio},
       paciente: {id: user.id},
       doctor: {id: selectedDoctor},
     };
@@ -244,20 +259,28 @@ export default function AppointmentForm({
         )}
       </View>
 
-      {/* Tipo */}
+      {/* Servicio */}
       <View style={styles.field}>
-        <Text style={styles.label}>Tipo de cita</Text>
-        <View style={styles.picker}>
-          <Picker
-            selectedValue={selectedType}
-            onValueChange={v => setSelectedType(v as string)}
-            style={{color: '#000'}}>
-            <Picker.Item label="Selecciona tipo" value="" />
-            {appointmentTypes.map(t => (
-              <Picker.Item key={t.value} label={t.label} value={t.value} />
-            ))}
-          </Picker>
-        </View>
+        <Text style={styles.label}>Servicio</Text>
+        {loadingServicios ? (
+          <ActivityIndicator />
+        ) : (
+          <View style={styles.picker}>
+            <Picker
+              selectedValue={selectedServicio}
+              onValueChange={v => setSelectedServicio(v as number)}
+              style={{color: '#000'}}>
+              <Picker.Item label="Selecciona servicio" value="" />
+              {servicios.map(s => (
+                <Picker.Item
+                  key={s.id}
+                  label={`${s.nombre} - $${s.precio}`}
+                  value={s.id}
+                />
+              ))}
+            </Picker>
+          </View>
+        )}
       </View>
 
       {/* Horario */}
