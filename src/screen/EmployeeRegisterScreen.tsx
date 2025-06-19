@@ -10,12 +10,15 @@ import {
 import {
   TextInput,
   Button,
-  Text,
+  Title,
   ActivityIndicator,
 } from 'react-native-paper';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import api from '../api';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { format, parseISO } from 'date-fns';
+import { theme } from '../theme';
 
 interface Cargo { id: number; nombre: string }
 interface Especialidad { id: number; nombre: string }
@@ -45,6 +48,10 @@ export default function EmployeeRegisterScreen() {
     especialidadId: '',
     fechaContratacion: '',
     salario: ''});
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const selectedDate = form.fechaContratacion
+    ? parseISO(form.fechaContratacion)
+    : new Date();
 
   const registerEmpleado = useMutation({
     mutationFn: (payload: any) => api.post('/empleados', payload),
@@ -103,115 +110,143 @@ export default function EmployeeRegisterScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.form}>
-        <Text variant="headlineMedium" style={styles.title}>
-          Registrar Empleado
-        </Text>
-
-        <TextInput
-          label="Nombre"
-          value={form.nombre}
-          onChangeText={v => onChange('nombre', v)}
-          style={styles.input}
-        />
-        <TextInput
-          label="Apellido"
-          value={form.apellido}
-          onChangeText={v => onChange('apellido', v)}
-          style={styles.input}
-        />
-        <TextInput
-          label="Email"
-          keyboardType="email-address"
-          value={form.email}
-          onChangeText={v => onChange('email', v)}
-          style={styles.input}
-        />
-        <TextInput
-          label="Contraseña"
-          secureTextEntry
-          value={form.password}
-          onChangeText={v => onChange('password', v)}
-          style={styles.input}
-        />
-
-        {/* Selector de Cargo */}
-        <TextInput
-          label="Cargo"
-          value={selectedCargo?.nombre || ''}
-          onFocus={() =>
-            Alert.alert(
-              'Selecciona un cargo',
-              undefined,
-              cargos.map(c => ({
-                text: c.nombre,
-                onPress: () => onChange('cargoId', c.id.toString()),
-              }))
-            )
-          }
-          style={styles.input}
-          right={<TextInput.Icon icon="menu-down" />}
-        />
-
-        {/* Si es Médico, pedimos especialidad */}
-        {showEspecialidad && (
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <Title style={styles.title}>Registrar Empleado</Title>
+        <View style={styles.formContainer}>
+          {/* Campos de registro */}
           <TextInput
-            label="Especialidad"
-            value={
-              especialidades.find(e => e.id.toString() === form.especialidadId)
-                ?.nombre || ''
-            }
+            mode="outlined"
+            label="Nombre"
+            value={form.nombre}
+            onChangeText={v => onChange('nombre', v)}
+            style={styles.input}
+          />
+          <TextInput
+            mode="outlined"
+            label="Apellido"
+            value={form.apellido}
+            onChangeText={v => onChange('apellido', v)}
+            style={styles.input}
+          />
+          <TextInput
+            mode="outlined"
+            label="Email"
+            keyboardType="email-address"
+            value={form.email}
+            onChangeText={v => onChange('email', v)}
+            style={styles.input}
+          />
+          <TextInput
+            mode="outlined"
+            label="Contraseña"
+            secureTextEntry
+            value={form.password}
+            onChangeText={v => onChange('password', v)}
+            style={styles.input}
+          />
+
+          {/* Selector de Cargo */}
+          <TextInput
+            mode="outlined"
+            label="Cargo"
+            value={selectedCargo?.nombre || ''}
             onFocus={() =>
               Alert.alert(
-                'Selecciona una especialidad',
+                'Selecciona un cargo',
                 undefined,
-                especialidades.map(e => ({
-                  text: e.nombre,
-                  onPress: () => onChange('especialidadId', e.id.toString()),
+                cargos.map(c => ({
+                  text: c.nombre,
+                  onPress: () => onChange('cargoId', c.id.toString()),
                 }))
               )
             }
             style={styles.input}
             right={<TextInput.Icon icon="menu-down" />}
           />
-        )}
 
-        <TextInput
-          label="Fecha contratación (YYYY-MM-DD)"
-          placeholder="2025-05-01"
-          value={form.fechaContratacion}
-          onChangeText={v => onChange('fechaContratacion', v)}
-          style={styles.input}
-        />
-        <TextInput
-          label="Salario"
-          placeholder="1000.00"
-          value={form.salario}
-          onChangeText={v => onChange('salario', v)}
-          style={styles.input}
-        />
+          {/* Si es Médico, pedimos especialidad */}
+          {showEspecialidad && (
+            <TextInput
+              mode="outlined"
+              label="Especialidad"
+              value={
+                especialidades.find(e => e.id.toString() === form.especialidadId)
+                  ?.nombre || ''
+              }
+              onFocus={() =>
+                Alert.alert(
+                  'Selecciona una especialidad',
+                  undefined,
+                  especialidades.map(e => ({
+                    text: e.nombre,
+                    onPress: () => onChange('especialidadId', e.id.toString()),
+                  }))
+                )
+              }
+              style={styles.input}
+              right={<TextInput.Icon icon="menu-down" />}
+            />
+          )}
 
-        <Button
-          mode="contained"
-          onPress={onSubmit}
-          loading={registerEmpleado.status === 'pending'}
-          style={styles.button}
-        >
-          Registrar
-        </Button>
+          {/* Fecha de contratación con DateTimePicker */}
+          <TextInput
+            mode="outlined"
+            label="Fecha contratación"
+            value={format(selectedDate, 'dd/MM/yyyy')}
+            onFocus={() => setShowDatePicker(true)}
+            showSoftInputOnFocus={false}
+            style={styles.input}
+            right={<TextInput.Icon icon="calendar" />}
+          />
+          {showDatePicker && (
+            <DateTimePicker
+              value={selectedDate}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={(_, date) => {
+                setShowDatePicker(false);
+                if (date) onChange('fechaContratacion', format(date, 'yyyy-MM-dd'));
+              }}
+            />
+          )}
+
+          <TextInput
+            mode="outlined"
+            label="Salario"
+            placeholder="1000.00"
+            keyboardType="numeric"
+            value={form.salario}
+            onChangeText={v => onChange('salario', v)}
+            style={styles.input}
+          />
+
+          <Button
+            mode="contained"
+            onPress={onSubmit}
+            loading={registerEmpleado.status === 'pending'}
+            style={styles.button}
+          >
+            Registrar
+          </Button>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  form: { padding: 16 },
+  container: { flex: 1 },
+  scrollView: { flex: 1 },
+  scrollContent: { padding: 16 },
   title: { marginBottom: 16, textAlign: 'center' },
+  formContainer: { backgroundColor: '#fff', padding: 16, borderRadius: 8, elevation: 2 },
   input: { marginBottom: 12 },
-  button: { marginTop: 24 },
+  button: { marginTop: 12 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });

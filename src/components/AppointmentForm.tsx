@@ -172,8 +172,9 @@ export default function AppointmentForm({
   const validate = (): boolean => {
     const fechaStr = format(selectedDate, 'yyyy-MM-dd');
 
-    if (misCitas.find(c => c.fecha === fechaStr && c.estado !== 'CANCELADA')) {
-      Alert.alert('Aviso', 'Usted ya tiene una cita activa para este día.');
+
+    if (misCitas.find(c => c.fecha === fechaStr && c.estado === 'AGENDADA')) {
+      Alert.alert('Aviso', 'Usted ya tiene una cita pendiente para este día.');
       return false;
     }
     if (!selectedDoctor) {

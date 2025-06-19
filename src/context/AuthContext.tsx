@@ -67,10 +67,17 @@ export const AuthProvider: React.FC<{children: ReactNode}> = ({children}) => {
 
       const {token, user: userData} = response.data;
 
+      // Asegurarse de que el objeto de usuario tenga la estructura correcta
       const userToStore = userData || response.data;
+
+      // Log adicional para depurar el rol
+      console.log('Rol del usuario en login:', userToStore?.rol);
 
       await AsyncStorage.setItem('token', token);
       await AsyncStorage.setItem('user', JSON.stringify(userToStore));
+
+      // Configurar el token en el header para futuras solicitudes
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
       setUser(userToStore);
       setIsAuthenticated(true);

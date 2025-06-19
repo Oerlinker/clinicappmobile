@@ -204,50 +204,52 @@ export default function ServiciosManagementScreen() {
           </Button>
         </View>
 
-        <DataTable style={styles.table}>
-          <DataTable.Header>
-            <DataTable.Title style={styles.nombreCol}>Nombre</DataTable.Title>
-            <DataTable.Title style={styles.descCol}>
-              Descripción
-            </DataTable.Title>
-            <DataTable.Title style={styles.precioCol}>Precio</DataTable.Title>
-            <DataTable.Title style={styles.actionsCol}>
-              Acciones
-            </DataTable.Title>
-          </DataTable.Header>
+        <ScrollView horizontal contentContainerStyle={styles.tableWrapper}>
+          <DataTable style={styles.table}>
+            <DataTable.Header>
+              <DataTable.Title style={styles.nombreCol}>Nombre</DataTable.Title>
+              <DataTable.Title style={styles.descCol}>
+                Descripción
+              </DataTable.Title>
+              <DataTable.Title style={styles.precioCol}>Precio</DataTable.Title>
+              <DataTable.Title style={styles.actionsCol}>
+                Acciones
+              </DataTable.Title>
+            </DataTable.Header>
 
-          {servicios.map(servicio => (
-            <DataTable.Row key={servicio.id.toString()}>
-              <DataTable.Cell style={styles.nombreCol}>
-                {servicio.nombre}
-              </DataTable.Cell>
-              <DataTable.Cell style={styles.descCol}>
-                {servicio.descripcion}
-              </DataTable.Cell>
-              <DataTable.Cell style={styles.precioCol}>
-                {`$${servicio.precio.toLocaleString()}`}
-              </DataTable.Cell>
-              <DataTable.Cell style={styles.actionsCol}>
-                <View style={styles.actionsContainer}>
-                  <Button
-                    mode="outlined"
-                    compact
-                    style={styles.actionButton}
-                    onPress={() => handleEdit(servicio)}>
-                    Editar
-                  </Button>
-                  <Button
-                    mode="outlined"
-                    compact
-                    style={[styles.actionButton, styles.deleteButton]}
-                    onPress={() => handleDelete(servicio.id)}>
-                    Eliminar
-                  </Button>
-                </View>
-              </DataTable.Cell>
-            </DataTable.Row>
-          ))}
-        </DataTable>
+            {servicios.map(servicio => (
+              <DataTable.Row key={servicio.id.toString()}>
+                <DataTable.Cell style={styles.nombreCol}>
+                  {servicio.nombre}
+                </DataTable.Cell>
+                <DataTable.Cell style={styles.descCol}>
+                  {servicio.descripcion}
+                </DataTable.Cell>
+                <DataTable.Cell style={styles.precioCol}>
+                  {`$${servicio.precio.toLocaleString()}`}
+                </DataTable.Cell>
+                <DataTable.Cell style={styles.actionsCol}>
+                  <View style={styles.actionsContainer}>
+                    <Button
+                      mode="outlined"
+                      compact
+                      style={styles.actionButton}
+                      onPress={() => handleEdit(servicio)}>
+                      Editar
+                    </Button>
+                    <Button
+                      mode="outlined"
+                      compact
+                      style={[styles.actionButton, styles.deleteButton]}
+                      onPress={() => handleDelete(servicio.id)}>
+                      Eliminar
+                    </Button>
+                  </View>
+                </DataTable.Cell>
+              </DataTable.Row>
+            ))}
+          </DataTable>
+        </ScrollView>
       </ScrollView>
 
       <Portal>
@@ -314,6 +316,9 @@ const styles = StyleSheet.create({
   },
   table: {
     marginBottom: 20,
+  },
+  tableWrapper: {
+    paddingRight: 16,
   },
   nombreCol: {
     flex: 1.5,

@@ -1,5 +1,4 @@
-
-  import React, { useState, useContext } from 'react';
+import React, { useState, useContext } from 'react';
   import {
     View,
     Text,
@@ -15,6 +14,7 @@
   import { useQuery } from '@tanstack/react-query';
   import api from '../api';
   import AppointmentForm from '../components/AppointmentForm';
+  import ListaTratamientos from '../components/ListaTratamientos';
   import { format, subWeeks, parseISO } from 'date-fns';
 
   interface Cita {
@@ -45,12 +45,12 @@
       enabled: !!user
     });
 
-    // Filtrar citas (sólo mostrar desde hace una semana o futuras)
+    // Filtrar citas (sólo mostrar desde hace una semana o futuras y que no estén canceladas)
     const filteredAppointments = appointments.filter(cita => {
       const today = new Date();
       const oneWeekAgo = subWeeks(today, 1);
       const citaDate = parseISO(cita.fecha);
-      return citaDate >= oneWeekAgo || citaDate > today;
+      return (citaDate >= oneWeekAgo || citaDate > today) && cita.estado !== 'CANCELADA';
     });
 
     // Función para crear nueva cita y procesar el pago
@@ -157,6 +157,8 @@
                 </View>
               }
             />
+            {/* Mostrar tratamientos debajo de las citas */}
+            <ListaTratamientos />
           </>
         )}
 
@@ -178,7 +180,7 @@
   }
 
   const styles = StyleSheet.create({
-    container:    { flex: 1, backgroundColor: '#F5F7FA' },
+    container:    { flex: 1, backgroundColor: '#F5F7FA', paddingBottom: 80 },
     centered:     { flex: 1, justifyContent: 'center', alignItems: 'center' },
     header:       { fontSize: 22, fontWeight: 'bold', padding: 16, paddingBottom: 8 },
     listContent:  { padding: 16 },

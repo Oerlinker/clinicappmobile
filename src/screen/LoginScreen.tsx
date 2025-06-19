@@ -1,13 +1,8 @@
 import React, {useState, useContext} from 'react';
+import { View, StyleSheet, Alert } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-} from 'react-native';
+import { TextInput, Button, Title } from 'react-native-paper';
+import { theme } from '../theme';
 import {AuthContext} from '../context/AuthContext';
 
 const LoginScreen: React.FC = () => {
@@ -37,39 +32,42 @@ const LoginScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Iniciar Sesión</Text>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <Title style={styles.title}>Iniciar Sesión</Title>
       <TextInput
-        style={styles.input}
-        placeholder="Correo electrónico"
-        placeholderTextColor="#666"
+        mode="outlined"
+        label="Correo electrónico"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
+        style={styles.input}
       />
       <TextInput
-        style={styles.input}
-        placeholder="Contraseña"
-        placeholderTextColor="#666"
-        secureTextEntry
+        mode="outlined"
+        label="Contraseña"
         value={password}
         onChangeText={setPassword}
+        secureTextEntry
+        style={styles.input}
       />
-      <TouchableOpacity
-        style={styles.btn}
+      <Button
+        mode="contained"
         onPress={handleLogin}
-        disabled={isLoading}>
-        <Text style={styles.btnText}>
-          {isLoading ? 'Cargando...' : 'Iniciar Sesión'}
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
+        loading={isLoading}
+        buttonColor={theme.colors.primary}
+        style={styles.btn}
+      >
+        Iniciar Sesión
+      </Button>
+      <Button
+        mode="text"
+        onPress={() => navigation.navigate('Register' as never)}
+        textColor={theme.colors.primary}
         style={styles.registerLink}
-        onPress={() => navigation.navigate('Register' as never)}>
-        <Text style={styles.registerText}>¿No tienes cuenta? Regístrate</Text>
-      </TouchableOpacity>
+      >
+        ¿No tienes cuenta? Regístrate
+      </Button>
     </View>
   );
 };
@@ -77,29 +75,9 @@ const LoginScreen: React.FC = () => {
 export default LoginScreen;
 
 const styles = StyleSheet.create({
-  container: {flex: 1, justifyContent: 'center', padding: 20},
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    marginBottom: 12,
-    padding: 10,
-    borderRadius: 4,
-    color: '#000',
-  },
-  btn: {backgroundColor: '#2196F3', padding: 12, borderRadius: 4},
-  btnText: {color: '#fff', textAlign: 'center', fontWeight: 'bold'},
-  registerLink: {
-    marginTop: 16,
-    alignItems: 'center',
-  },
-  registerText: {
-    color: '#2196F3',
-    textAlign: 'center',
-  },
+  container: { flex: 1, justifyContent: 'center', padding: 20 },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' },
+  input: { marginBottom: 12 },
+  btn: { marginTop: 8 },
+  registerLink: { marginTop: 16 },
 });

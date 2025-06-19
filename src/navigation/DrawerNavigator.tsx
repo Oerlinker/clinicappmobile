@@ -12,6 +12,8 @@ import ProfileScreen from '../screen/ProfileScreen.tsx';
 import DeptManagementScreen from '../screen/DeptManagementScreen.tsx';
 import ServiciosManagementScreen from '../screen/ServiciosManagementScreen.tsx';
 import PatologiasManagementScreen from '../screen/PatologiasManagementScreen.tsx';
+import MedicamentosManagementScreen from '../screen/MedicamentosManagementScreen';
+import TratamientosManagementScreen from '../screen/TratamientosManagementScreen';
 
 export type AdminDrawerParamList = {
   Roles: undefined;
@@ -24,6 +26,8 @@ export type AdminDrawerParamList = {
   Departamentos: undefined;
   Servicios: undefined;
   Patologias: undefined;
+  Medicamentos: undefined;
+  Tratamientos: undefined;
   Perfil: undefined;
 };
 
@@ -39,6 +43,8 @@ export default function DrawerNavigator() {
       <Drawer.Screen name="Departamentos" component={DeptManagementScreen} />
       <Drawer.Screen name="Servicios" component={ServiciosManagementScreen} />
       <Drawer.Screen name="Patologias" component={PatologiasManagementScreen} />
+      <Drawer.Screen name="Medicamentos" component={MedicamentosManagementScreen} />
+      <Drawer.Screen name="Tratamientos" component={TratamientosManagementScreen} />
       <Drawer.Screen name="Bitacora" component={BitacoraScreen} />
       <Drawer.Screen name="Reportes Citas" component={CitaReportScreen} />
       <Drawer.Screen

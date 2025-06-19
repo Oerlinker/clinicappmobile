@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text } from 'react-native';
+import { theme } from '../theme';
 
 import HomeScreen from '../screen/HomeScreen';
 import AppointmentScreen from '../screen/AppointmentScreen';
@@ -12,21 +13,35 @@ export default function AppNavigator() {
   return (
     <Tab.Navigator
       screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: '#2196F3',
-        tabBarInactiveTintColor: 'gray',
+        headerShown: true,
+        headerTitleAlign: 'center',
+        headerStyle: {
+          backgroundColor: theme.colors.primary,
+          borderBottomLeftRadius: 16,
+          borderBottomRightRadius: 16,
+          elevation: 4,
+        },
+        headerTitleStyle: {
+          color: '#fff',
+          fontWeight: 'bold',
+          fontSize: 20,
+        },
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: '#b0b0b0',
         tabBarStyle: {
-          height: 60,
-          paddingBottom: 6,
-          paddingTop: 6,
+          height: 62,
+          paddingBottom: 8,
+          paddingTop: 8,
+          borderTopLeftRadius: 16,
+          borderTopRightRadius: 16,
+          backgroundColor: '#fff',
+          elevation: 8,
+          overflow: 'hidden',
         },
         tabBarLabelStyle: {
-          fontSize: 12,
-          marginTop: 0,
+          fontSize: 13,
           marginBottom: 4,
-        },
-        tabBarIconStyle: {
-          marginTop: 2,
+          fontWeight: '600',
         },
       }}
     >
@@ -35,6 +50,7 @@ export default function AppNavigator() {
         component={HomeScreen}
         options={{
           tabBarLabel: 'Inicio',
+          title: 'Inicio',
           tabBarIcon: ({ color, size }) => (
             <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
               <Text style={{ color, fontSize: size }}>🏠</Text>
@@ -42,12 +58,12 @@ export default function AppNavigator() {
           ),
         }}
       />
-
       <Tab.Screen
         name="Citas"
         component={AppointmentScreen}
         options={{
           tabBarLabel: 'Citas',
+          title: 'Citas',
           tabBarIcon: ({ color, size }) => (
             <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
               <Text style={{ color, fontSize: size }}>📅</Text>
@@ -60,6 +76,7 @@ export default function AppNavigator() {
         component={ProfileScreen}
         options={{
           tabBarLabel: 'Perfil',
+          title: 'Perfil',
           tabBarIcon: ({ color, size }) => (
             <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
               <Text style={{ color, fontSize: size }}>👤</Text>

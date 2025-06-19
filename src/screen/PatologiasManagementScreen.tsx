@@ -197,40 +197,42 @@ export default function PatologiasManagementScreen() {
           </Button>
         </View>
 
-        <DataTable style={styles.table}>
-          <DataTable.Header>
-            <DataTable.Title style={styles.codigoCol}>Código</DataTable.Title>
-            <DataTable.Title style={styles.nombreCol}>Nombre</DataTable.Title>
-            <DataTable.Title style={styles.descCol}>Descripción</DataTable.Title>
-            <DataTable.Title style={styles.actionsCol}>Acciones</DataTable.Title>
-          </DataTable.Header>
+        <ScrollView horizontal contentContainerStyle={styles.tableWrapper}>
+          <DataTable style={styles.table}>
+            <DataTable.Header>
+              <DataTable.Title style={styles.codigoCol}>Código</DataTable.Title>
+              <DataTable.Title style={styles.nombreCol}>Nombre</DataTable.Title>
+              <DataTable.Title style={styles.descCol}>Descripción</DataTable.Title>
+              <DataTable.Title style={styles.actionsCol}>Acciones</DataTable.Title>
+            </DataTable.Header>
 
-          {patologias.map(patologia => (
-            <DataTable.Row key={patologia.id.toString()}>
-              <DataTable.Cell style={styles.codigoCol}>{patologia.codigo}</DataTable.Cell>
-              <DataTable.Cell style={styles.nombreCol}>{patologia.nombre}</DataTable.Cell>
-              <DataTable.Cell style={styles.descCol}>{patologia.descripcion}</DataTable.Cell>
-              <DataTable.Cell style={styles.actionsCol}>
-                <View style={styles.actionsContainer}>
-                  <Button
-                    mode="outlined"
-                    compact
-                    style={styles.actionButton}
-                    onPress={() => handleEdit(patologia)}>
-                    Editar
-                  </Button>
-                  <Button
-                    mode="outlined"
-                    compact
-                    style={[styles.actionButton, styles.deleteButton]}
-                    onPress={() => handleDelete(patologia.id)}>
-                    Eliminar
-                  </Button>
-                </View>
-              </DataTable.Cell>
-            </DataTable.Row>
-          ))}
-        </DataTable>
+            {patologias.map(patologia => (
+              <DataTable.Row key={patologia.id.toString()}>
+                <DataTable.Cell style={styles.codigoCol}>{patologia.codigo}</DataTable.Cell>
+                <DataTable.Cell style={styles.nombreCol}>{patologia.nombre}</DataTable.Cell>
+                <DataTable.Cell style={styles.descCol}>{patologia.descripcion}</DataTable.Cell>
+                <DataTable.Cell style={styles.actionsCol}>
+                  <View style={styles.actionsContainer}>
+                    <Button
+                      mode="outlined"
+                      compact
+                      style={styles.actionButton}
+                      onPress={() => handleEdit(patologia)}>
+                      Editar
+                    </Button>
+                    <Button
+                      mode="outlined"
+                      compact
+                      style={[styles.actionButton, styles.deleteButton]}
+                      onPress={() => handleDelete(patologia.id)}>
+                      Eliminar
+                    </Button>
+                  </View>
+                </DataTable.Cell>
+              </DataTable.Row>
+            ))}
+          </DataTable>
+        </ScrollView>
       </ScrollView>
 
       <Portal>
@@ -292,6 +294,9 @@ const styles = StyleSheet.create({
   },
   table: {
     marginBottom: 20,
+  },
+  tableWrapper: {
+    paddingRight: 16,
   },
   codigoCol: {
     flex: 1,

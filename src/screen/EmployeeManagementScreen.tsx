@@ -200,7 +200,6 @@ export default function EmployeeManagementScreen() {
           </View>
         </View>
       ) : (
-        // ScrollView horizontal para tablas anchas
         <ScrollView horizontal contentContainerStyle={styles.tableWrapper}>
           <DataTable>
             <DataTable.Header>
@@ -291,7 +290,6 @@ const styles = StyleSheet.create({
   buttonsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 },
   button: { flex: 1, marginHorizontal: 4 },
   tableWrapper: {
-    // Asegura algo de padding para el scroll
     paddingRight: 16,
   },
   colNombre: {
